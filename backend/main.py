@@ -4,101 +4,122 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+# Importando nossa inteligência (Passo 3)
+from utils import categorizar_transacao, calcular_score_saude
+
 # 1. Configuração Inicial
 load_dotenv()
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-app = FastAPI(title="Salário Smart API")
+app = FastAPI(title="Salário Smart API - V1.0")
 
-# 2. Modelos de Dados (Pydantic - Validação)
+# 2. Modelos de Dados (Pydantic)
 class AdiantamentoRequest(BaseModel):
     user_id: str
     valor: float
 
-class Transacao(BaseModel):
-    user_id: str
-    amount: float
-    type: str # 'entrada' ou 'saida'
-    category: str
-    description: str
+class CategorizacaoRequest(BaseModel):
+    descricao: str
 
 # 3. ENDPOINTS
 
 @app.get("/")
 def read_root():
-    return {"status": "API Online", "projeto": "Salário Smart"}
+    return {"status": "online", "mode": "Hackathon MVP"}
 
-# --- ENDPOINT 1: DASHBOARD (Resumo Financeiro) ---
+# --- NOVO: Endpoint para testar a IA na Demo ---
+@app.post("/categorizar")
+def prever_categoria(req: CategorizacaoRequest):
+    """
+    Endpoint utilitário para o Front-end verificar a categoria antes de salvar.
+    Usa o Gemini Flash via utils.py.
+    """
+    categoria = categorizar_transacao(req.descricao)
+    return {"descricao": req.descricao, "categoria_sugerida": categoria}
+
+# --- DASHBOARD (Agora com cálculo real) ---
 @app.get("/dashboard/{user_id}")
 def get_dashboard(user_id: str):
-    # Buscar perfil
+    # A. Buscar perfil
     profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
     if not profile.data:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     dados_perfil = profile.data[0]
     
-    # Buscar transações para calcular saldo
+    # B. Buscar transações (Todas para calcular o acumulado)
+    # Dica: Em produção, filtraríamos por mês atual. Para MVP, pegamos tudo.
     transacoes = supabase.table("transactions").select("*").eq("user_id", user_id).execute()
     
     total_entradas = sum(t['amount'] for t in transacoes.data if t['type'] == 'entrada')
     total_saidas = sum(t['amount'] for t in transacoes.data if t['type'] == 'saida')
     saldo_atual = total_entradas - total_saidas
     
-    # Lógica simples de Score (Mockada para MVP)
-    # Se gastou menos de 50% do salário, score alto.
-    razao = total_saidas / dados_perfil['base_salary'] if dados_perfil['base_salary'] > 0 else 1
-    score = int(1000 - (razao * 500))
+    # Calcular quantos adiantamentos já foram feitos (para penalizar o score)
+    adiantamentos_feitos = sum(1 for t in transacoes.data if t['category'] == 'Adiantamento')
+    
+    # C. Calcular Score usando a função do utils.py
+    score = calcular_score_saude(
+        gastos=total_saidas, 
+        renda=total_entradas, 
+        adiantamentos_ativos=adiantamentos_feitos
+    )
     
     return {
-        "saldo_atual": saldo_atual,
+        "saldo_atual": round(saldo_atual, 2),
         "limite_adiantamento": dados_perfil['advance_limit'],
         "saude_financeira": score,
-        "gastos_total": total_saidas
+        "gastos_total": round(total_saidas, 2),
+        "renda_total": round(total_entradas, 2)
     }
 
-# --- ENDPOINT 2: EXTRATO ---
+# --- EXTRATO ---
 @app.get("/extrato/{user_id}")
 def get_extrato(user_id: str):
-    # Retorna as últimas 20 transações
-    response = supabase.table("transactions").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(20).execute()
+    # Retorna as últimas 50 transações ordenadas
+    response = supabase.table("transactions").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
     return response.data
 
-# --- ENDPOINT 3: ADIANTAMENTO (A Core Feature) ---
+# --- ADIANTAMENTO ---
 @app.post("/adiantamento")
 def solicitar_adiantamento(req: AdiantamentoRequest):
-    # 1. Verificar se tem limite
+    # 1. Verificar limite
     profile = supabase.table("profiles").select("*").eq("id", req.user_id).execute()
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="User not found")
+        
     user_data = profile.data[0]
     
     if req.valor > user_data['advance_limit']:
         raise HTTPException(status_code=400, detail="Valor excede o limite disponível")
 
-    # 2. Criar a transação de entrada (O dinheiro caindo na conta)
-    nova_transacao = {
+    # 2. Registrar Entrada (Dinheiro na conta)
+    supabase.table("transactions").insert({
         "user_id": req.user_id,
         "amount": req.valor,
         "type": "entrada",
-        "category": "Adiantamento Salarial",
-        "description": "Adiantamento via App"
-    }
-    supabase.table("transactions").insert(nova_transacao).execute()
+        "category": "Adiantamento", # Categoria fixa para controle
+        "description": "Adiantamento Salário Smart"
+    }).execute()
     
-    # 3. Deduzir do limite disponível (Atualiza tabela profiles)
-    novo_limite = user_data['advance_limit'] - req.valor
+    # 3. Atualizar Limite no Perfil
+    novo_limite = float(user_data['advance_limit']) - req.valor
     supabase.table("profiles").update({"advance_limit": novo_limite}).eq("id", req.user_id).execute()
     
-    # 4. Cobrar taxa (Opcional - Feature de Monetização)
-    # Aqui criamos uma saída simbólica de taxa
+    # 4. Registrar Taxa (Monetização)
     taxa = 5.90
     supabase.table("transactions").insert({
         "user_id": req.user_id,
         "amount": taxa,
         "type": "saida",
         "category": "Taxas",
-        "description": "Taxa de Serviço Adiantamento"
+        "description": "Taxa de Serviço"
     }).execute()
     
-    return {"status": "sucesso", "novo_saldo_limite": novo_limite, "mensagem": "Adiantamento realizado!"}
+    return {
+        "status": "sucesso", 
+        "novo_saldo_limite": novo_limite, 
+        "mensagem": "Dinheiro liberado na conta!"
+    }
