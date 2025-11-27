@@ -1,0 +1,6 @@
+feat: estrutura inicial do backend (FastAPI) e banco de dados (Supabase)
+
+- Configuração do ambiente FastAPI e conexão com Supabase
+- Criação das tabelas 'profiles' e 'transactions' (SQL)
+- Implementação dos endpoints principais: /dashboard, /extrato e /adiantamento
+- Inserção de dados de teste (seed) para usuário mockado    
