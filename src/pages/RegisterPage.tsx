@@ -89,7 +89,7 @@ export default function RegisterPage() {
                             <UserPlus className="w-8 h-8 text-white" />
                         </div>
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
-                            Finance AI
+                            aiiaHub
                         </h1>
                         <p className="text-muted-foreground mt-2">Crie sua conta</p>
                     </div>

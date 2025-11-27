@@ -17,7 +17,7 @@ export default function Layout() {
             <aside className="w-64 border-r border-border bg-card/50 backdrop-blur-xl hidden md:flex flex-col">
                 <div className="p-6">
                     <h1 className="text-2xl font-bold text-primary bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
-                        Finance AI
+                        aiiaHub
                     </h1>
                 </div>
 
@@ -53,7 +53,7 @@ export default function Layout() {
 
             {/* header smartphone*/}
             <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/50 backdrop-blur-xl border-b border-border flex items-center px-4 z-50">
-                <h1 className="text-xl font-bold text-primary">Finance AI</h1>
+                <h1 className="text-xl font-bold text-primary">aiiaHub</h1>
             </div>
 
             {/* conteudo principal */}

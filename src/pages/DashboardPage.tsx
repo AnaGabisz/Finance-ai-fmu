@@ -196,7 +196,7 @@ export default function DashboardPage() {
                         <div className="absolute top-0 right-0 p-4">
                             <Sparkles className="w-6 h-6 text-violet-400 animate-pulse" />
                         </div>
-                        <h3 className="font-bold text-white mb-2">Finance AI</h3>
+                        <h3 className="font-bold text-white mb-2">aiiaHub</h3>
                         <p className="text-sm text-gray-300 leading-relaxed mb-4">
                             Notei que você gastou <span className="text-violet-300 font-bold">R$ 400</span> em alimentação. 
                             Que tal definir um limite diário de R$ 30,00 para economizar 15%?
