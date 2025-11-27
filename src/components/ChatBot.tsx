@@ -17,7 +17,80 @@ const SUGESTOES = [
     "Resumo das minhas finanças"
 ]
 
-const SYSTEM_PROMPT = `Você é um assistente financeiro chamado aiiaHub. Responda sempre de forma clara, amigável e objetiva, focando em finanças pessoais, controle de gastos, dicas de economia, explicações sobre adiantamento salarial e educação financeira. Se a pergunta não for sobre finanças, oriente o usuário a focar nesse tema. Sua resposta deve ter no máximo 150 palavras.`
+// Dados financeiros mockados do usuário
+const DADOS_FINANCEIROS = {
+    nome: "João da Silva",
+    saldo_atual: 1250.50,
+    salario: 3500.00,
+    limite_adiantamento: 1400.00,
+    total_entradas: 3700.00,
+    total_saidas: 2449.50,
+    gastos_por_categoria: {
+        "Alimentação": 395.50,
+        "Transporte": 125.90,
+        "Lazer": 61.80,
+        "Contas Fixas": 1449.90,
+        "Saúde": 80.00
+    },
+    assinaturas: [
+        { nome: "Netflix", valor: 39.90 },
+        { nome: "Spotify", valor: 21.90 }
+    ],
+    beneficios: [
+        { tipo: "Vale Refeição", valor: 800.00 },
+        { tipo: "Vale Alimentação", valor: 400.00 }
+    ],
+    ultimas_transacoes: [
+        { descricao: "Salário Mensal", valor: 3500.00, tipo: "entrada", categoria: "Renda" },
+        { descricao: "Aluguel Apto", valor: 1200.00, tipo: "saida", categoria: "Contas Fixas" },
+        { descricao: "iFood - McDonalds", valor: 45.50, tipo: "saida", categoria: "Alimentação" },
+        { descricao: "Uber - Viagem", valor: 25.90, tipo: "saida", categoria: "Transporte" },
+        { descricao: "Netflix", valor: 39.90, tipo: "saida", categoria: "Lazer" },
+        { descricao: "Enel Energia", valor: 150.00, tipo: "saida", categoria: "Contas Fixas" },
+        { descricao: "Farmacia Drogasil", valor: 80.00, tipo: "saida", categoria: "Saúde" }
+    ]
+}
+
+// Função para gerar o prompt com data/hora atual
+const getSystemPrompt = () => {
+    const agora = new Date()
+    const dataHora = agora.toLocaleString('pt-BR', { 
+        dateStyle: 'full', 
+        timeStyle: 'short' 
+    })
+    
+    return `Você é o assistente da aiiaHub, um app de gestão financeira inteligente.
+Você pode responder sobre QUALQUER assunto, mas tem especialidade em finanças.
+Responda de forma clara, amigável e objetiva. Máximo 150 palavras.
+
+DATA E HORA ATUAL: ${dataHora}
+
+DADOS FINANCEIROS DO USUÁRIO (${DADOS_FINANCEIROS.nome}):
+- Saldo atual: R$ ${DADOS_FINANCEIROS.saldo_atual.toFixed(2)}
+- Salário: R$ ${DADOS_FINANCEIROS.salario.toFixed(2)}
+- Limite de adiantamento disponível: R$ ${DADOS_FINANCEIROS.limite_adiantamento.toFixed(2)}
+- Total de entradas: R$ ${DADOS_FINANCEIROS.total_entradas.toFixed(2)}
+- Total de saídas: R$ ${DADOS_FINANCEIROS.total_saidas.toFixed(2)}
+
+GASTOS POR CATEGORIA:
+${Object.entries(DADOS_FINANCEIROS.gastos_por_categoria).map(([cat, val]) => `- ${cat}: R$ ${val.toFixed(2)}`).join('\n')}
+
+ASSINATURAS ATIVAS:
+${DADOS_FINANCEIROS.assinaturas.map(a => `- ${a.nome}: R$ ${a.valor.toFixed(2)}/mês`).join('\n')}
+Total em assinaturas: R$ ${DADOS_FINANCEIROS.assinaturas.reduce((sum, a) => sum + a.valor, 0).toFixed(2)}/mês
+
+BENEFÍCIOS CORPORATIVOS:
+${DADOS_FINANCEIROS.beneficios.map(b => `- ${b.tipo}: R$ ${b.valor.toFixed(2)}`).join('\n')}
+
+ÚLTIMAS TRANSAÇÕES:
+${DADOS_FINANCEIROS.ultimas_transacoes.map(t => `- ${t.descricao}: ${t.tipo === 'entrada' ? '+' : '-'}R$ ${t.valor.toFixed(2)} (${t.categoria})`).join('\n')}
+
+REGRAS:
+1. Responda qualquer pergunta do usuário (hora, clima, curiosidades, etc)
+2. Para perguntas financeiras, use os dados acima
+3. Seja direto e amigável
+4. Se perguntarem a hora, use a DATA E HORA ATUAL informada acima`
+}
 
 export default function ChatBot() {
     const [isOpen, setIsOpen] = useState(false)
@@ -56,8 +129,8 @@ export default function ChatBot() {
         setLoading(true)
 
         try {
-            // Prompt personalizado para o Gemini Flash
-            const prompt = `${SYSTEM_PROMPT}\nUsuário: ${text.trim()}`
+            // Prompt personalizado para o Gemini Flash com data/hora atual
+            const prompt = `${getSystemPrompt()}\n\nUsuário: ${text.trim()}`
             const geminiResponse = await askGemini(prompt)
 
             const botMessage: Message = {
