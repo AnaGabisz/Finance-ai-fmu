@@ -1,125 +1,130 @@
 import os
+from datetime import datetime
+from typing import Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Importando nossa inteligência (Passo 3)
-from utils import categorizar_transacao, calcular_score_saude
+# Importando IA (Fallback se der erro de cota mantém o app rodando)
+from utils import categorizar_transacao 
 
-# 1. Configuração Inicial
 load_dotenv()
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-app = FastAPI(title="Salário Smart API - V1.0")
+app = FastAPI(title="Salário Smart - B2B2C MVP")
 
-# 2. Modelos de Dados (Pydantic)
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- MODELS (Inputs) ---
 class AdiantamentoRequest(BaseModel):
     user_id: str
     valor: float
 
-class CategorizacaoRequest(BaseModel):
-    descricao: str
+class SimulacaoConsignadoRequest(BaseModel):
+    user_id: str
+    valor_desejado: float
+    parcelas: int
 
-# 3. ENDPOINTS
+class TrilhaRequest(BaseModel):
+    user_id: str
+    trilha: str # Ex: 'Sair das Dívidas', 'Começar a Investir'
+
+# --- ROTAS ---
 
 @app.get("/")
-def read_root():
-    return {"status": "online", "mode": "Hackathon MVP"}
+def home():
+    return {"status": "API B2B2C Online"}
 
-# --- NOVO: Endpoint para testar a IA na Demo ---
-@app.post("/categorizar")
-def prever_categoria(req: CategorizacaoRequest):
-    """
-    Endpoint utilitário para o Front-end verificar a categoria antes de salvar.
-    Usa o Gemini Flash via utils.py.
-    """
-    categoria = categorizar_transacao(req.descricao)
-    return {"descricao": req.descricao, "categoria_sugerida": categoria}
-
-# --- DASHBOARD (Agora com cálculo real) ---
-@app.get("/dashboard/{user_id}")
-def get_dashboard(user_id: str):
-    # A. Buscar perfil
-    profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+# 1. GET /extrato-inteligente (Junta Transações + Benefícios)
+@app.get("/extrato-inteligente/{user_id}")
+def get_extrato_inteligente(user_id: str):
+    # Busca transações bancárias
+    transacoes = supabase.table("transacoes").select("*").eq("user_id", user_id).order("data", desc=True).execute()
     
-    dados_perfil = profile.data[0]
-    
-    # B. Buscar transações (Todas para calcular o acumulado)
-    # Dica: Em produção, filtraríamos por mês atual. Para MVP, pegamos tudo.
-    transacoes = supabase.table("transactions").select("*").eq("user_id", user_id).execute()
-    
-    total_entradas = sum(t['amount'] for t in transacoes.data if t['type'] == 'entrada')
-    total_saidas = sum(t['amount'] for t in transacoes.data if t['type'] == 'saida')
-    saldo_atual = total_entradas - total_saidas
-    
-    # Calcular quantos adiantamentos já foram feitos (para penalizar o score)
-    adiantamentos_feitos = sum(1 for t in transacoes.data if t['category'] == 'Adiantamento')
-    
-    # C. Calcular Score usando a função do utils.py
-    score = calcular_score_saude(
-        gastos=total_saidas, 
-        renda=total_entradas, 
-        adiantamentos_ativos=adiantamentos_feitos
-    )
+    # Busca benefícios corporativos (O diferencial B2B)
+    beneficios = supabase.table("beneficios").select("*").eq("user_id", user_id).execute()
     
     return {
-        "saldo_atual": round(saldo_atual, 2),
-        "limite_adiantamento": dados_perfil['advance_limit'],
-        "saude_financeira": score,
-        "gastos_total": round(total_saidas, 2),
-        "renda_total": round(total_entradas, 2)
+        "conta_corrente": transacoes.data,
+        "beneficios_corporativos": beneficios.data,
+        "analise_ia": "Seus gastos com alimentação superaram o VR este mês." # Mock para demo
     }
 
-# --- EXTRATO ---
-@app.get("/extrato/{user_id}")
-def get_extrato(user_id: str):
-    # Retorna as últimas 50 transações ordenadas
-    response = supabase.table("transactions").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
-    return response.data
+# 2. GET /score-financeiro
+@app.get("/score-financeiro/{user_id}")
+def get_score(user_id: str):
+    response = supabase.table("score").select("*").eq("user_id", user_id).execute()
+    if not response.data:
+        return {"pontuacao": 0, "nivel": "Indefinido"}
+    return response.data[0]
 
-# --- ADIANTAMENTO ---
+# 3. POST /adiantamento (Salário sob demanda)
 @app.post("/adiantamento")
 def solicitar_adiantamento(req: AdiantamentoRequest):
-    # 1. Verificar limite
-    profile = supabase.table("profiles").select("*").eq("id", req.user_id).execute()
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    user_data = profile.data[0]
+    # Validação simples: Máximo 40% do salário bruto
+    profile = supabase.table("profiles").select("salario_bruto").eq("id", req.user_id).execute()
+    salario = profile.data[0]['salario_bruto']
+    limite = salario * 0.40
     
-    if req.valor > user_data['advance_limit']:
-        raise HTTPException(status_code=400, detail="Valor excede o limite disponível")
+    if req.valor > limite:
+        raise HTTPException(status_code=400, detail=f"Valor excede o limite de R$ {limite}")
 
-    # 2. Registrar Entrada (Dinheiro na conta)
-    supabase.table("transactions").insert({
+    # Registra o adiantamento
+    data_adiantamento = {
         "user_id": req.user_id,
-        "amount": req.valor,
-        "type": "entrada",
-        "category": "Adiantamento", # Categoria fixa para controle
-        "description": "Adiantamento Salário Smart"
+        "valor": req.valor,
+        "status": "aprovado",
+        "data": datetime.now().isoformat()
+    }
+    supabase.table("adiantamentos").insert(data_adiantamento).execute()
+    
+    # Cria transação de entrada para refletir no extrato
+    supabase.table("transacoes").insert({
+        "user_id": req.user_id,
+        "valor": req.valor,
+        "tipo": "entrada",
+        "categoria": "Adiantamento Salarial",
+        "data": datetime.now().isoformat()
     }).execute()
     
-    # 3. Atualizar Limite no Perfil
-    novo_limite = float(user_data['advance_limit']) - req.valor
-    supabase.table("profiles").update({"advance_limit": novo_limite}).eq("id", req.user_id).execute()
-    
-    # 4. Registrar Taxa (Monetização)
-    taxa = 5.90
-    supabase.table("transactions").insert({
-        "user_id": req.user_id,
-        "amount": taxa,
-        "type": "saida",
-        "category": "Taxas",
-        "description": "Taxa de Serviço"
-    }).execute()
+    return {"status": "sucesso", "mensagem": "Adiantamento liberado na conta!"}
+
+# 4. POST /simulacao-consignado
+@app.post("/simulacao-consignado")
+def simular_consignado(req: SimulacaoConsignadoRequest):
+    """
+    Simula um empréstimo com juros baixos (benefício empresa).
+    Juros simples de 1.5% a.m. para demo.
+    """
+    taxa_juros = 0.015
+    montante_final = req.valor_desejado * (1 + taxa_juros * req.parcelas)
+    valor_parcela = montante_final / req.parcelas
     
     return {
-        "status": "sucesso", 
-        "novo_saldo_limite": novo_limite, 
-        "mensagem": "Dinheiro liberado na conta!"
+        "valor_solicitado": req.valor_desejado,
+        "taxa_juros_mensal": "1.5%",
+        "total_pagar": round(montante_final, 2),
+        "valor_parcela": round(valor_parcela, 2),
+        "conclusao": "Pré-aprovado pela TechCorp"
     }
+
+# 5. POST /personalizar-trilha
+@app.post("/personalizar-trilha")
+def set_trilha(req: TrilhaRequest):
+    # Salva a preferência do usuário para mudar a UX do app
+    supabase.table("profiles").update({"trilha_escolhida": req.trilha}).eq("id", req.user_id).execute()
+    
+    # Recalcula nivel (exemplo de gamificação)
+    supabase.table("score").update({"nivel": "Em evolução"}).eq("user_id", req.user_id).execute()
+    
+    return {"status": "trilha definida", "nova_interface": req.trilha}
