@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, Loader2, Bot, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { askGemini } from '@/lib/gemini'
 
 interface Message {
     id: string
@@ -15,6 +16,8 @@ const SUGESTOES = [
     "Posso pedir adiantamento?",
     "Resumo das minhas finanças"
 ]
+
+const SYSTEM_PROMPT = `Você é um assistente financeiro chamado aiiaHub. Responda sempre de forma clara, amigável e objetiva, focando em finanças pessoais, controle de gastos, dicas de economia, explicações sobre adiantamento salarial e educação financeira. Se a pergunta não for sobre finanças, oriente o usuário a focar nesse tema. Sua resposta deve ter no máximo 150 palavras.`
 
 export default function ChatBot() {
     const [isOpen, setIsOpen] = useState(false)
@@ -53,25 +56,13 @@ export default function ChatBot() {
         setLoading(true)
 
         try {
-            const userStr = localStorage.getItem('user')
-            const userId = userStr 
-                ? JSON.parse(userStr).id 
-                : 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
-
-            const response = await fetch('http://localhost:8000/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: userId,
-                    message: text.trim()
-                })
-            })
-
-            const data = await response.json()
+            // Prompt personalizado para o Gemini Flash
+            const prompt = `${SYSTEM_PROMPT}\nUsuário: ${text.trim()}`
+            const geminiResponse = await askGemini(prompt)
 
             const botMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: data.resposta || 'Desculpe, não consegui processar sua pergunta.',
+                text: geminiResponse || 'Desculpe, não consegui processar sua pergunta.',
                 isBot: true,
                 timestamp: new Date()
             }
