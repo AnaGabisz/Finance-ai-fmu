@@ -110,8 +110,8 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Grid de KPIs - Design Glassmorphism (Item 04) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Grid de KPIs - Design Glassmorphism */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Card Saldo */}
                 <div className="group relative p-6 rounded-2xl bg-card/40 backdrop-blur-xl border border-white/5 shadow-xl overflow-hidden hover:border-primary/20 transition-all duration-300">
                     <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity transform group-hover:scale-110 duration-500">
@@ -129,7 +129,32 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Card CTA Principal - Assinaturas Inteligentes */}
+                {/* Card Adiantamento */}
+                <div className="relative p-6 rounded-2xl bg-gradient-to-br from-emerald-600/90 to-emerald-900 border border-emerald-500/20 shadow-2xl shadow-emerald-500/10 overflow-hidden text-white">
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                    <div className="relative z-10 flex flex-col h-full justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 text-white/80 font-medium text-sm mb-1">
+                                <Wallet className="w-4 h-4" />
+                                <span>Limite Disponível</span>
+                            </div>
+                            <div className="text-3xl font-bold tracking-tight">
+                                R$ {data.limite_adiantamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
+                            <div className="text-sm text-white/70 mt-2">
+                                Adiantamento Salarial
+                            </div>
+                        </div>
+                        <Link to="/adiantamento">
+                            <button className="mt-4 w-full group flex items-center justify-center gap-2 bg-white text-emerald-600 font-bold py-3 rounded-xl hover:bg-gray-50 transition-all active:scale-95 shadow-lg">
+                                Solicitar
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Card Assinaturas Inteligentes */}
                 <div className="relative p-6 rounded-2xl bg-gradient-to-br from-primary/90 to-violet-900 border border-primary/20 shadow-2xl shadow-primary/20 overflow-hidden text-white">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
@@ -142,11 +167,11 @@ export default function DashboardPage() {
                                 {data.assinaturas_ativas || 0}
                             </div>
                             <div className="text-sm text-white/70 mt-2">
-                                Total: R$ {(data.total_assinaturas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
+                                R$ {(data.total_assinaturas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
                             </div>
                         </div>
                         <Link to="/assinaturas">
-                            <button className="mt-6 w-full group flex items-center justify-center gap-2 bg-white text-primary font-bold py-3 rounded-xl hover:bg-gray-50 transition-all active:scale-95 shadow-lg">
+                            <button className="mt-4 w-full group flex items-center justify-center gap-2 bg-white text-primary font-bold py-3 rounded-xl hover:bg-gray-50 transition-all active:scale-95 shadow-lg">
                                 Gerenciar
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </button>

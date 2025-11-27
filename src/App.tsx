@@ -4,9 +4,8 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import DashboardPage from '@/pages/DashboardPage'
 import AssinaturasPage from '@/pages/AssinaturasPage'
-
-// Placeholder pages
-const Extrato = () => <div className="text-2xl font-bold">Extrato (Em construção)</div>
+import ExtratoPage from '@/pages/ExtratoPage'
+import AdiantamentoPage from '@/pages/AdiantamentoPage'
 
 function App() {
     return (
@@ -16,8 +15,9 @@ function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route element={<Layout />}>
                     <Route path="/" element={<DashboardPage />} />
-                    <Route path="/extrato" element={<Extrato />} />
+                    <Route path="/extrato" element={<ExtratoPage />} />
                     <Route path="/assinaturas" element={<AssinaturasPage />} />
+                    <Route path="/adiantamento" element={<AdiantamentoPage />} />
                 </Route>
             </Routes>
         </BrowserRouter>

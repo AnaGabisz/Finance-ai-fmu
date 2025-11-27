@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wallet, ArrowRightLeft, LogOut } from 'lucide-react'
+import { LayoutDashboard, Wallet, ArrowRightLeft, LogOut, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import ChatBot from '@/components/ChatBot'
 
 export default function Layout() {
     const location = useLocation()
@@ -9,6 +10,7 @@ export default function Layout() {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: ArrowRightLeft, label: 'Extrato', path: '/extrato' },
         { icon: Wallet, label: 'Assinaturas', path: '/assinaturas' },
+        { icon: CreditCard, label: 'Adiantamento', path: '/adiantamento' },
     ]
 
     return (
@@ -62,6 +64,9 @@ export default function Layout() {
                     <Outlet />
                 </div>
             </main>
+
+            {/* Chatbot flutuante */}
+            <ChatBot />
         </div>
     )
 }
