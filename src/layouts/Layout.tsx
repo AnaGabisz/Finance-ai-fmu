@@ -8,7 +8,7 @@ export default function Layout() {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: ArrowRightLeft, label: 'Extrato', path: '/extrato' },
-        { icon: Wallet, label: 'Adiantamento', path: '/adiantamento' },
+        { icon: Wallet, label: 'Assinaturas', path: '/assinaturas' },
     ]
 
     return (

@@ -3,10 +3,10 @@ import Layout from '@/layouts/Layout'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import DashboardPage from '@/pages/DashboardPage'
+import AssinaturasPage from '@/pages/AssinaturasPage'
 
 // Placeholder pages
 const Extrato = () => <div className="text-2xl font-bold">Extrato (Em construção)</div>
-const Adiantamento = () => <div className="text-2xl font-bold">Adiantamento (Em construção)</div>
 
 function App() {
     return (
@@ -17,7 +17,7 @@ function App() {
                 <Route element={<Layout />}>
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/extrato" element={<Extrato />} />
-                    <Route path="/adiantamento" element={<Adiantamento />} />
+                    <Route path="/assinaturas" element={<AssinaturasPage />} />
                 </Route>
             </Routes>
         </BrowserRouter>

@@ -13,7 +13,9 @@ const MOCK_DATA: DashboardData = {
     saldo_atual: 1250.00,
     limite_adiantamento: 600.00,
     saude_financeira: 850,
-    gastos_total: 2250.00
+    gastos_total: 2250.00,
+    total_assinaturas: 156.70,
+    assinaturas_ativas: 5
 }
 
 const CHART_DATA = [
@@ -37,15 +39,54 @@ const getCategoryIcon = (category: string) => {
 export default function DashboardPage() {
     const [data, setData] = useState<DashboardData>(MOCK_DATA)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        // loading simulado
+        const fetchDashboardData = async () => {
+            try {
+                // Pegar user_id do localStorage (mock auth)
+                const userStr = localStorage.getItem('user')
+                if (!userStr) {
+                    setError('Usuário não autenticado')
+                    setLoading(false)
+                    return
+                }
 
-        setTimeout(() => setLoading(false), 500)
+                const user = JSON.parse(userStr)
+                const userId = user.id
+
+                // Chamar API do backend
+                const response = await fetch(`http://localhost:8000/dashboard/${userId}`)
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar dados do dashboard')
+                }
+
+                const dashboardData = await response.json()
+                setData(dashboardData)
+                setError(null)
+            } catch (err: any) {
+                console.error('Erro ao carregar dashboard:', err)
+                setError(err.message)
+                // Manter dados mockados em caso de erro
+                setData(MOCK_DATA)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchDashboardData()
     }, [])
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+            {/* Alerta de erro (se API falhar, mostra dados mockados) */}
+            {error && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
+                    ⚠️ Usando dados de demonstração. Backend offline ou erro: {error}
+                </div>
+            )}
+
             {/* Header com Personalização (Item 03 do Slide) */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border/40 pb-6">
                 <div>
@@ -88,22 +129,25 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Card CTA Principal - Adiantamento (Integração de Serviços - Item 01) */}
+                {/* Card CTA Principal - Assinaturas Inteligentes */}
                 <div className="relative p-6 rounded-2xl bg-gradient-to-br from-primary/90 to-violet-900 border border-primary/20 shadow-2xl shadow-primary/20 overflow-hidden text-white">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
                         <div>
                             <div className="flex items-center gap-2 text-white/80 font-medium text-sm mb-1">
                                 <CreditCard className="w-4 h-4" />
-                                <span>Limite Pré-Aprovado</span>
+                                <span>Assinaturas Ativas</span>
                             </div>
                             <div className="text-3xl font-bold tracking-tight">
-                                R$ {data.limite_adiantamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                {data.assinaturas_ativas || 0}
+                            </div>
+                            <div className="text-sm text-white/70 mt-2">
+                                Total: R$ {(data.total_assinaturas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
                             </div>
                         </div>
-                        <Link to="/adiantamento">
+                        <Link to="/assinaturas">
                             <button className="mt-6 w-full group flex items-center justify-center gap-2 bg-white text-primary font-bold py-3 rounded-xl hover:bg-gray-50 transition-all active:scale-95 shadow-lg">
-                                Sacar Agora
+                                Gerenciar
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </button>
                         </Link>

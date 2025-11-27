@@ -15,6 +15,9 @@ export default function LoginPage() {
         setError('')
         setLoading(true)
 
+        // TODO: Integrar com Supabase Auth
+        // Substituir mock por: const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        
         // autenticaçao mockada
         setTimeout(() => {
             try {
