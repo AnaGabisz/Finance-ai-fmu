@@ -4,23 +4,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuração da IA
 api_key = os.environ.get("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
 def categorizar_regra_basica(descricao: str) -> str:
-    """Fallback: Se a IA falhar, usamos palavras-chave."""
+    """Fallback simples se a IA falhar."""
     desc = descricao.lower()
-    if any(x in desc for x in ['uber', '99', 'posto', 'gasolina']): return "Transporte"
-    if any(x in desc for x in ['food', 'burger', 'restaurante', 'mercado']): return "Alimentação"
-    if any(x in desc for x in ['netflix', 'spotify', 'cinema']): return "Lazer"
-    if any(x in desc for x in ['salario', 'pagamento']): return "Renda"
+    if any(x in desc for x in ['uber', '99', 'posto']): return "Transporte"
+    if any(x in desc for x in ['food', 'burger', 'mercado']): return "Alimentação"
     return "Outros"
 
-def categorizar_com_ai(descricao: str) -> str:
+def categorizar_transacao(descricao: str, regras_usuario: list = None) -> str:
     """
-    Usa o Gemini Flash para categorizar com inteligência semântica.
+    Categoriza usando IA, mas INFLUENCIADO pelas regras do usuário.
+    regras_usuario: Lista de dicionários [{'keyword': 'starbucks', 'category': 'Trabalho'}]
     """
     if not api_key:
         return categorizar_regra_basica(descricao)
@@ -28,45 +26,35 @@ def categorizar_com_ai(descricao: str) -> str:
     try:
         model = genai.GenerativeModel('gemini-2.5-flash')
         
+        # 1. Montar o Contexto Personalizado (A Mágica acontece aqui)
+        contexto_regras = ""
+        if regras_usuario:
+            contexto_regras = "O usuário definiu estas regras de preferência pessoal:\n"
+            for regra in regras_usuario:
+                contexto_regras += f"- Se contiver '{regra['keyword']}', a categoria É '{regra['category']}'.\n"
+
+        # 2. O Prompt Enriquecido
         prompt = f"""
-        Você é um assistente financeiro bancário (Backend API).
-        Sua tarefa: Categorizar a transação abaixo em UMA das seguintes categorias:
-        [Transporte, Alimentação, Lazer, Contas Fixas, Saúde, Educação, Compras, Renda, Outros]
-
-        Regras:
-        1. Responda APENAS o nome da categoria. Sem explicações. Sem pontuação.
-        2. Se for ambíguo, escolha a mais provável para um trabalhador brasileiro.
-        3. "Salário", "Adiantamento", "Pix Recebido" deve ser "Renda".
-
+        Atue como um assistente financeiro pessoal.
+        {contexto_regras}
+        
+        Sua tarefa é categorizar a transação abaixo em UMA categoria simples.
+        Priorize as regras do usuário acima do seu conhecimento geral.
+        
         Transação: "{descricao}"
-        Categoria:
+        Categoria (Responda apenas a palavra):
         """
         
         response = model.generate_content(prompt)
-        categoria_limpa = response.text.strip()
-        
-        # Validação simples para garantir que a IA não alucinou um texto longo
-        categorias_validas = ["Transporte", "Alimentação", "Lazer", "Contas Fixas", "Saúde", "Educação", "Compras", "Renda", "Outros"]
-        if categoria_limpa in categorias_validas:
-            return categoria_limpa
-        else:
-            # Se a IA inventou uma categoria, tentamos aproximar ou retornamos Outros
-            return "Outros"
+        return response.text.strip()
 
     except Exception as e:
-        print(f"⚠️ Erro na IA (usando fallback): {e}")
+        print(f"⚠️ Erro na IA: {e}")
         return categorizar_regra_basica(descricao)
 
-# Função Wrapper principal que o sistema vai chamar
-def categorizar_transacao(descricao: str) -> str:
-    return categorizar_com_ai(descricao)
-
-# Mantivemos a lógica de score igual
-def calcular_score_saude(gastos: float, renda: float, adiantamentos_ativos: float) -> int:
+# Mantemos a função de score igual
+def calcular_score_saude(gastos, renda, adiantamentos):
     if renda == 0: return 0
-    comprometimento = gastos / renda
-    base_score = 1000
-    if comprometimento > 0.80: base_score -= 300
-    elif comprometimento > 0.60: base_score -= 100
-    base_score -= (adiantamentos_ativos * 50)
-    return max(0, int(base_score))
+    ratio = gastos / renda
+    score = 1000 - (ratio * 500) - (adiantamentos * 50)
+    return max(0, int(score))
