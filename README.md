@@ -118,20 +118,8 @@ Contribuições são bem-vindas. Sugestões rápidas:
 
 ## Autores e Contato
 
-- Mantentor: Ana (repositório: `AnaGabisz/Finance-ai-fmu`).
+- Mantentor: Ana Gabriella, Gabriel Reis e Luis Miguel (repositório: `Finance-ai-fmu`).
 - Para dúvidas ou propostas, abra uma issue no repositório ou envie mensagem à equipe do Hackathon.
 
-## Licença
 
-Especifique a licença deste projeto (por exemplo, `MIT`) adicionando um arquivo `LICENSE` ou atualize este documento com a licença escolhida.
-
----
-
-Se quiser, eu posso:
-
-- adicionar um `LICENSE` (ex.: MIT) automaticamente;
-- detectar e ajustar comandos exatos para o backend (se você me disser qual framework está usando, ex.: FastAPI, Flask, Django);
-- atualizar `package.json`/`requirements.txt` com scripts/entradas faltantes.
-
-Quer que eu adicione a licença e ajuste comandos conforme o framework do backend? 
 
